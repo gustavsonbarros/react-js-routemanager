@@ -21,24 +21,51 @@ export default function Clientes() {
   const [connectionError, setConnectionError] = useState(false);
 
   function handleChange(e) {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-    
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: null });
+  const { name, value } = e.target;
+  let formattedValue = value;
+
+  // Aplica máscara dinâmica para CPF (11 dígitos) ou CNPJ (14 dígitos)
+  if (name === "cpfOuCnpj") {
+    // Remove tudo que não for número
+    const onlyNumbers = value.replace(/\D/g, "");
+
+    // Formata como CPF (000.000.000-00) se tiver até 11 dígitos
+    if (onlyNumbers.length <= 11) {
+      formattedValue = onlyNumbers
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    } 
+    // Formata como CNPJ (00.000.000/0000-00) se tiver mais que 11 dígitos
+    else {
+      formattedValue = onlyNumbers
+        .replace(/^(\d{2})(\d)/, "$1.$2")
+        .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+        .replace(/\.(\d{3})(\d)/, ".$1/$2")
+        .replace(/(\d{4})(\d)/, "$1-$2");
     }
   }
 
+  setForm({ ...form, [name]: formattedValue });
+
+  // Limpa o erro se existir
+  if (errors[name]) {
+    setErrors({ ...errors, [name]: null });
+  }
+}
+
   function validateForm() {
-    const newErrors = {};
-    
-    if (form.nome.trim().length < 3) {
-      newErrors.nome = "Nome deve ter pelo menos 3 caracteres";
-    }
-    
-    if (form.cpfOuCnpj.trim().length < 11) {
-      newErrors.cpfOuCnpj = "CPF/CNPJ inválido";
-    }
+  const newErrors = {};
+  const onlyNumbersCpfCnpj = form.cpfOuCnpj.replace(/\D/g, ""); // Remove não-números
+
+  // Validação do CPF/CNPJ
+  if (onlyNumbersCpfCnpj.length === 11) {
+    // Pode adicionar validação de CPF real aqui (opcional)
+  } else if (onlyNumbersCpfCnpj.length === 14) {
+    // Pode adicionar validação de CNPJ real aqui (opcional)
+  } else {
+    newErrors.cpfOuCnpj = onlyNumbersCpfCnpj.length < 11 ? "CPF inválido (11 dígitos)" : "CNPJ inválido (14 dígitos)";
+  }
     
     if (!/\S+@\S+\.\S+/.test(form.email)) {
       newErrors.email = "E-mail inválido";
