@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import "./Clientes.css";
 
-// Configuração base do axios
 const api = axios.create({
   baseURL: "http://localhost:3001",
-  timeout: 5000, // timeout de 5 segundos
+  timeout: 5000,
 });
 
 export default function Clientes() {
@@ -19,40 +18,35 @@ export default function Clientes() {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   function handleChange(e) {
-  const { name, value } = e.target;
-  let formattedValue = value;
+    const { name, value } = e.target;
+    let formattedValue = value;
 
-  // Aplica máscara dinâmica para CPF (11 dígitos) ou CNPJ (14 dígitos)
-  if (name === "cpfOuCnpj") {
-    // Remove tudo que não for número
-    const onlyNumbers = value.replace(/\D/g, "");
+    if (name === "cpfOuCnpj") {
+      const onlyNumbers = value.replace(/\D/g, "");
+      
+      if (onlyNumbers.length <= 11) {
+        formattedValue = onlyNumbers
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d)/, "$1.$2")
+          .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+      } else {
+        formattedValue = onlyNumbers
+          .replace(/^(\d{2})(\d)/, "$1.$2")
+          .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+          .replace(/\.(\d{3})(\d)/, ".$1/$2")
+          .replace(/(\d{4})(\d)/, "$1-$2");
+      }
+    }
 
-    // Formata como CPF (000.000.000-00) se tiver até 11 dígitos
-    if (onlyNumbers.length <= 11) {
-      formattedValue = onlyNumbers
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d)/, "$1.$2")
-        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    } 
-    // Formata como CNPJ (00.000.000/0000-00) se tiver mais que 11 dígitos
-    else {
-      formattedValue = onlyNumbers
-        .replace(/^(\d{2})(\d)/, "$1.$2")
-        .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-        .replace(/\.(\d{3})(\d)/, ".$1/$2")
-        .replace(/(\d{4})(\d)/, "$1-$2");
+    setForm({ ...form, [name]: formattedValue });
+
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: null });
     }
   }
-
-  setForm({ ...form, [name]: formattedValue });
-
-  // Limpa o erro se existir
-  if (errors[name]) {
-    setErrors({ ...errors, [name]: null });
-  }
-}
 
   function validateForm() {
   const newErrors = {};
@@ -60,46 +54,65 @@ export default function Clientes() {
 
   // Validação do CPF/CNPJ
   if (onlyNumbersCpfCnpj.length === 11) {
-    // Pode adicionar validação de CPF real aqui (opcional)
+    // Validação básica de CPF (pode implementar validação completa depois)
+    if (!/^\d{11}$/.test(onlyNumbersCpfCnpj)) {
+      newErrors.cpfOuCnpj = "CPF inválido";
+    }
   } else if (onlyNumbersCpfCnpj.length === 14) {
-    // Pode adicionar validação de CNPJ real aqui (opcional)
+    // Validação básica de CNPJ (pode implementar validação completa depois)
+    if (!/^\d{14}$/.test(onlyNumbersCpfCnpj)) {
+      newErrors.cpfOuCnpj = "CNPJ inválido";
+    }
   } else {
-    newErrors.cpfOuCnpj = onlyNumbersCpfCnpj.length < 11 ? "CPF inválido (11 dígitos)" : "CNPJ inválido (14 dígitos)";
+    newErrors.cpfOuCnpj = onlyNumbersCpfCnpj.length < 11 ? 
+      "CPF deve ter 11 dígitos" : 
+      "CNPJ deve ter 14 dígitos";
   }
     
-    if (!/\S+@\S+\.\S+/.test(form.email)) {
-      newErrors.email = "E-mail inválido";
-    }
-    
-    if (form.endereco.trim().length < 5) {
-      newErrors.endereco = "Endereço muito curto";
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  if (!/\S+@\S+\.\S+/.test(form.email)) {
+    newErrors.email = "E-mail inválido";
   }
+    
+  if (form.endereco.trim().length < 5) {
+    newErrors.endereco = "Endereço muito curto";
+  }
+    
+  setErrors(newErrors);
+  return Object.keys(newErrors).length === 0;
+}
 
   async function handleSubmit(e) {
     e.preventDefault();
     
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
     
     try {
-      await api.post("/clientes", form);
+      if (editingId) {
+        await api.put(`/clientes/${editingId}`, form);
+        alert("Cliente atualizado com sucesso!");
+      } else {
+        await api.post("/clientes", form);
+        alert("Cliente cadastrado com sucesso!");
+      }
+      
       setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "" });
+      setEditingId(null);
       await fetchClientes();
-      alert("Cliente cadastrado com sucesso!");
     } catch (err) {
       console.error(err);
-      alert(`Erro ao cadastrar cliente: ${err.message}`);
+      alert(`Erro: ${err.message}`);
       setConnectionError(true);
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function handleEdit(cliente) {
+    setForm(cliente);
+    setEditingId(cliente.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function fetchClientes() {
@@ -107,7 +120,6 @@ export default function Clientes() {
       setIsLoading(true);
       setConnectionError(false);
       const res = await api.get("/clientes");
-      console.log("Resposta da API:", res.data);
 
       if (Array.isArray(res.data)) {
         setClientes(res.data);
@@ -199,8 +211,20 @@ export default function Clientes() {
           </div>
 
           <button type="submit" className="submit-button" disabled={isLoading}>
-            {isLoading ? "Cadastrando..." : "Cadastrar Cliente"}
+            {isLoading ? "Salvando..." : editingId ? "Editar Cliente" : "Cadastrar Cliente"}
           </button>
+
+          {editingId && (
+            <button
+              onClick={() => {
+                setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "" });
+                setEditingId(null);
+              }}
+              className="clear-button"
+            >
+              Cancelar Edição
+            </button>
+          )}
         </form>
 
         <div className="clientes-list">
@@ -216,6 +240,7 @@ export default function Clientes() {
                   <th>CPF/CNPJ</th>
                   <th>E-mail</th>
                   <th>Endereço</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,6 +250,14 @@ export default function Clientes() {
                     <td>{cliente.cpfOuCnpj}</td>
                     <td>{cliente.email}</td>
                     <td>{cliente.endereco}</td>
+                    <td>
+                      <button 
+                        onClick={() => handleEdit(cliente)}
+                        className="edit-button"
+                      >
+                        Editar
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

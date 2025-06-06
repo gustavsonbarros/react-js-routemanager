@@ -48,6 +48,12 @@
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  border-color: #3498db;
+  outline: none;
 }
 
 .input-error {
@@ -92,6 +98,7 @@
 .clientes-table {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 1rem;
 }
 
 .clientes-table th, 
@@ -106,14 +113,83 @@
   font-weight: 600;
 }
 
+.clientes-table tr:hover {
+  background-color: #f9f9f9;
+}
+
 .empty-message {
   text-align: center;
   color: #666;
   padding: 2rem;
 }
 
+/* Action Buttons */
+.edit-button {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.9rem;
+  min-width: 70px;
+}
+
+.edit-button:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
+}
+
+.clear-button {
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #ddd;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 1rem;
+  transition: background-color 0.3s;
+}
+
+.clear-button:hover {
+  background-color: #e2e6ea;
+}
+
+.clear-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive Design */
 @media (max-width: 768px) {
   .clientes-content {
     grid-template-columns: 1fr;
+  }
+
+  .clientes-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .edit-button {
+    padding: 0.5rem;
+    min-width: 60px;
+  }
+}
+
+@media (max-width: 480px) {
+  .clientes-container {
+    padding: 1rem;
+  }
+  
+  .clientes-form, 
+  .clientes-list {
+    padding: 1rem;
+  }
+
+  .form-group input {
+    padding: 0.7rem;
   }
 }
