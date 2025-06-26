@@ -74,17 +74,9 @@ export default function Clientes() {
     
     try {
       if (editingId) {
-        // Se estiver editando, verifica se é um ID temporário
-        if (editingId.toString().startsWith('temp-')) {
-          // Cria um novo cliente se for temporário
-          await api.post("/clientes", form);
-        } else {
-          // Atualiza cliente existente
-          await api.put(`/clientes/${editingId}`, form);
-        }
-        alert("Cliente salvo com sucesso!");
+        await api.put(`/clientes/${editingId}`, form);
+        alert("Cliente atualizado com sucesso!");
       } else {
-        // Cria um novo cliente
         await api.post("/clientes", form);
         alert("Cliente cadastrado com sucesso!");
       }
@@ -127,16 +119,11 @@ export default function Clientes() {
     try {
       setIsLoading(true);
       setConnectionError(false);
-      
-      // Tenta buscar da API
       const res = await api.get("/clientes");
       
-      // Garante que cada cliente tenha um ID válido
-      const clientesData = Array.isArray(res.data) 
-        ? res.data.map(cliente => ({
-            ...cliente,
-            id: cliente.id || `temp-${Date.now()}` // Gera ID temporário se não existir
-          }))
+      // Verificação segura dos dados recebidos
+      const clientesData = Array.isArray(res?.data) 
+        ? res.data.filter(cliente => cliente?.id) // Filtra apenas clientes com ID
         : [];
       
       setClientes(clientesData);
