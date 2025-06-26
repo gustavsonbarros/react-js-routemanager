@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import { FiUser, FiMail, FiMapPin, FiAlertCircle, FiEdit2, FiTrash2, FiPlus, FiX } from "react-icons/fi";
 import "./Clientes.css";
 
 const api = axios.create({
@@ -13,12 +14,14 @@ export default function Clientes() {
     nome: "",
     cpfOuCnpj: "",
     email: "",
-    endereco: ""
+    endereco: "",
+    status: "ativo"
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,18 +78,15 @@ export default function Clientes() {
     try {
       if (editingId) {
         await api.put(`/clientes/${editingId}`, form);
-        alert("Cliente atualizado com sucesso!");
       } else {
         await api.post("/clientes", form);
-        alert("Cliente cadastrado com sucesso!");
       }
       
-      setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "" });
+      setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "", status: "ativo" });
       setEditingId(null);
       await fetchClientes();
     } catch (err) {
       console.error("Erro ao salvar cliente:", err);
-      alert(`Erro: ${err.response?.data?.message || err.message}`);
       setConnectionError(true);
     } finally {
       setIsLoading(false);
@@ -99,11 +99,9 @@ export default function Clientes() {
     try {
       setIsLoading(true);
       await api.delete(`/clientes/${id}`);
-      alert("Cliente excluído com sucesso!");
       await fetchClientes();
     } catch (err) {
       console.error("Erro ao excluir cliente:", err);
-      alert(`Erro ao excluir cliente: ${err.response?.data?.message || err.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -121,9 +119,8 @@ export default function Clientes() {
       setConnectionError(false);
       const res = await api.get("/clientes");
       
-      // Verificação segura dos dados recebidos
       const clientesData = Array.isArray(res?.data) 
-        ? res.data.filter(cliente => cliente?.id) // Filtra apenas clientes com ID
+        ? res.data.filter(cliente => cliente?.id)
         : [];
       
       setClientes(clientesData);
@@ -136,6 +133,12 @@ export default function Clientes() {
     }
   };
 
+  const filteredClientes = clientes.filter(cliente =>
+    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cliente.cpfOuCnpj.includes(searchTerm) ||
+    cliente.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   useEffect(() => {
     fetchClientes();
   }, []);
@@ -143,46 +146,80 @@ export default function Clientes() {
   return (
     <div className="container">
       <div className="header">
-        <h2>Cadastro de Clientes</h2>
-        <p>Gerencie os clientes do seu sistema</p>
+        <h2>Gestão de Clientes</h2>
+        <p>Cadastre e gerencie os clientes do sistema</p>
       </div>
 
       {connectionError && (
         <div className="alert-error">
-          Erro de conexão com o servidor. Verifique sua rede.
+          <FiAlertCircle /> Erro de conexão com o servidor. Verifique sua rede.
         </div>
       )}
 
       <div className="content">
         <form onSubmit={handleSubmit} className="form">
-          {["nome", "cpfOuCnpj", "email", "endereco"].map((field) => (
-            <div key={field} className="form-group">
-              <label htmlFor={field}>
-                {field === "cpfOuCnpj" ? "CPF/CNPJ" : 
-                 field === "nome" ? "Nome Completo" : 
-                 field === "email" ? "E-mail" : "Endereço"}
-              </label>
-              <input
-                id={field}
-                name={field}
-                type={field === "email" ? "email" : "text"}
-                placeholder={
-                  field === "cpfOuCnpj" ? "Digite CPF ou CNPJ" :
-                  field === "nome" ? "Digite o nome completo" :
-                  field === "email" ? "exemplo@email.com" : "Rua, número, bairro, cidade"
-                }
-                value={form[field]}
-                onChange={handleChange}
-                className={errors[field] ? "input-error" : ""}
-              />
-              {errors[field] && <span className="error">{errors[field]}</span>}
-            </div>
-          ))}
+          <h3>{editingId ? "Editar Cliente" : "Cadastrar Novo Cliente"}</h3>
+          
+          <div className="form-group">
+            <label htmlFor="nome">Nome Completo</label>
+            <input
+              id="nome"
+              name="nome"
+              type="text"
+              placeholder="Digite o nome completo"
+              value={form.nome}
+              onChange={handleChange}
+              className={errors.nome ? "input-error" : ""}
+            />
+            {errors.nome && <span className="error">{errors.nome}</span>}
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="cpfOuCnpj">CPF/CNPJ</label>
+            <input
+              id="cpfOuCnpj"
+              name="cpfOuCnpj"
+              type="text"
+              placeholder="Digite CPF ou CNPJ"
+              value={form.cpfOuCnpj}
+              onChange={handleChange}
+              className={errors.cpfOuCnpj ? "input-error" : ""}
+            />
+            {errors.cpfOuCnpj && <span className="error">{errors.cpfOuCnpj}</span>}
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="email">E-mail</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="exemplo@email.com"
+              value={form.email}
+              onChange={handleChange}
+              className={errors.email ? "input-error" : ""}
+            />
+            {errors.email && <span className="error">{errors.email}</span>}
+          </div>
+          
+          <div className="form-group">
+            <label htmlFor="endereco">Endereço</label>
+            <input
+              id="endereco"
+              name="endereco"
+              type="text"
+              placeholder="Rua, número, bairro, cidade"
+              value={form.endereco}
+              onChange={handleChange}
+              className={errors.endereco ? "input-error" : ""}
+            />
+            {errors.endereco && <span className="error">{errors.endereco}</span>}
+          </div>
 
           <div className="buttons">
             <button type="submit" className="btn primary" disabled={isLoading}>
               {isLoading ? <span className="spinner"></span> : null}
-              {editingId ? "Atualizar" : "Cadastrar"}
+              {editingId ? "Atualizar Cliente" : "Cadastrar Cliente"}
             </button>
             
             {editingId && (
@@ -190,54 +227,79 @@ export default function Clientes() {
                 type="button" 
                 className="btn secondary"
                 onClick={() => {
-                  setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "" });
+                  setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "", status: "ativo" });
                   setEditingId(null);
                 }}
+                disabled={isLoading}
               >
-                Cancelar
+                <FiX /> Cancelar
               </button>
             )}
           </div>
         </form>
 
         <div className="list">
+          <div className="search-container">
+            <input
+              type="text"
+              placeholder="Pesquisar clientes..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+          
           <h3>Clientes Cadastrados</h3>
           
           {isLoading ? (
             <p>Carregando...</p>
-          ) : clientes.length > 0 ? (
+          ) : filteredClientes.length > 0 ? (
             <table>
               <thead>
                 <tr>
                   <th>Nome</th>
                   <th>CPF/CNPJ</th>
                   <th>E-mail</th>
-                  <th>Endereço</th>
+                  <th>Status</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {clientes.map((cliente) => (
+                {filteredClientes.map((cliente) => (
                   <tr key={cliente.id}>
-                    <td>{cliente.nome}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <FiUser className="text-gray-500" />
+                        {cliente.nome}
+                      </div>
+                    </td>
                     <td>{cliente.cpfOuCnpj}</td>
-                    <td>{cliente.email}</td>
-                    <td>{cliente.endereco}</td>
+                    <td>
+                      <div className="flex items-center gap-2">
+                        <FiMail className="text-gray-500" />
+                        {cliente.email}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`status-badge status-${cliente.status || 'ativo'}`}>
+                        {cliente.status === 'inativo' ? 'Inativo' : 'Ativo'}
+                      </span>
+                    </td>
                     <td>
                       <div className="actions">
                         <button 
                           onClick={() => handleEdit(cliente)}
-                          className="btn edit"
+                          className="edit"
                           disabled={isLoading}
                         >
-                          Editar
+                          <FiEdit2 size={14} />
                         </button>
                         <button 
                           onClick={() => handleDelete(cliente.id)}
-                          className="btn delete"
+                          className="delete"
                           disabled={isLoading}
                         >
-                          Excluir
+                          <FiTrash2 size={14} />
                         </button>
                       </div>
                     </td>
@@ -246,7 +308,10 @@ export default function Clientes() {
               </tbody>
             </table>
           ) : (
-            <p className="empty">Nenhum cliente cadastrado</p>
+            <div className="empty">
+              <FiUser size={48} className="mx-auto mb-4 text-gray-300" />
+              <p>Nenhum cliente encontrado</p>
+            </div>
           )}
         </div>
       </div>
