@@ -20,7 +20,7 @@ export default function Clientes() {
   const [connectionError, setConnectionError] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
-  function handleChange(e) {
+  const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
 
@@ -42,57 +42,49 @@ export default function Clientes() {
     }
 
     setForm({ ...form, [name]: formattedValue });
+    if (errors[name]) setErrors({ ...errors, [name]: null });
+  };
 
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: null });
-    }
-  }
+  const validateForm = () => {
+    const newErrors = {};
+    const onlyNumbersCpfCnpj = form.cpfOuCnpj.replace(/\D/g, "");
 
-  function validateForm() {
-  const newErrors = {};
-  const onlyNumbersCpfCnpj = form.cpfOuCnpj.replace(/\D/g, ""); // Remove não-números
-
-  // Validação do CPF/CNPJ
-  if (onlyNumbersCpfCnpj.length === 11) {
-    // Validação básica de CPF (pode implementar validação completa depois)
-    if (!/^\d{11}$/.test(onlyNumbersCpfCnpj)) {
+    if (form.nome.trim().length < 3) newErrors.nome = "Nome deve ter pelo menos 3 caracteres";
+    
+    if (onlyNumbersCpfCnpj.length === 11 && !/^\d{11}$/.test(onlyNumbersCpfCnpj)) {
       newErrors.cpfOuCnpj = "CPF inválido";
-    }
-  } else if (onlyNumbersCpfCnpj.length === 14) {
-    // Validação básica de CNPJ (pode implementar validação completa depois)
-    if (!/^\d{14}$/.test(onlyNumbersCpfCnpj)) {
+    } else if (onlyNumbersCpfCnpj.length === 14 && !/^\d{14}$/.test(onlyNumbersCpfCnpj)) {
       newErrors.cpfOuCnpj = "CNPJ inválido";
+    } else if (![11, 14].includes(onlyNumbersCpfCnpj.length)) {
+      newErrors.cpfOuCnpj = onlyNumbersCpfCnpj.length < 11 ? "CPF deve ter 11 dígitos" : "CNPJ deve ter 14 dígitos";
     }
-  } else {
-    newErrors.cpfOuCnpj = onlyNumbersCpfCnpj.length < 11 ? 
-      "CPF deve ter 11 dígitos" : 
-      "CNPJ deve ter 14 dígitos";
-  }
     
-  if (!/\S+@\S+\.\S+/.test(form.email)) {
-    newErrors.email = "E-mail inválido";
-  }
+    if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "E-mail inválido";
+    if (form.endereco.trim().length < 5) newErrors.endereco = "Endereço muito curto";
     
-  if (form.endereco.trim().length < 5) {
-    newErrors.endereco = "Endereço muito curto";
-  }
-    
-  setErrors(newErrors);
-  return Object.keys(newErrors).length === 0;
-}
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
-  async function handleSubmit(e) {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
 
     setIsLoading(true);
     
     try {
       if (editingId) {
-        await api.put(`/clientes/${editingId}`, form);
-        alert("Cliente atualizado com sucesso!");
+        // Se estiver editando, verifica se é um ID temporário
+        if (editingId.toString().startsWith('temp-')) {
+          // Cria um novo cliente se for temporário
+          await api.post("/clientes", form);
+        } else {
+          // Atualiza cliente existente
+          await api.put(`/clientes/${editingId}`, form);
+        }
+        alert("Cliente salvo com sucesso!");
       } else {
+        // Cria um novo cliente
         await api.post("/clientes", form);
         alert("Cliente cadastrado com sucesso!");
       }
@@ -101,34 +93,53 @@ export default function Clientes() {
       setEditingId(null);
       await fetchClientes();
     } catch (err) {
-      console.error(err);
-      alert(`Erro: ${err.message}`);
+      console.error("Erro ao salvar cliente:", err);
+      alert(`Erro: ${err.response?.data?.message || err.message}`);
       setConnectionError(true);
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
-  function handleEdit(cliente) {
+  const handleDelete = async (id) => {
+    if (!window.confirm("Tem certeza que deseja excluir este cliente?")) return;
+    
+    try {
+      setIsLoading(true);
+      await api.delete(`/clientes/${id}`);
+      alert("Cliente excluído com sucesso!");
+      await fetchClientes();
+    } catch (err) {
+      console.error("Erro ao excluir cliente:", err);
+      alert(`Erro ao excluir cliente: ${err.response?.data?.message || err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEdit = (cliente) => {
     setForm(cliente);
     setEditingId(cliente.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+  };
 
-  async function fetchClientes() {
+  const fetchClientes = async () => {
     try {
       setIsLoading(true);
       setConnectionError(false);
+      
+      // Tenta buscar da API
       const res = await api.get("/clientes");
-
-      if (Array.isArray(res.data)) {
-        setClientes(res.data);
-      } else if (Array.isArray(res.data?.clientes)) {
-        setClientes(res.data.clientes);
-      } else {
-        console.error("Resposta inesperada:", res.data);
-        setClientes([]);
-      }
+      
+      // Garante que cada cliente tenha um ID válido
+      const clientesData = Array.isArray(res.data) 
+        ? res.data.map(cliente => ({
+            ...cliente,
+            id: cliente.id || `temp-${Date.now()}` // Gera ID temporário se não existir
+          }))
+        : [];
+      
+      setClientes(clientesData);
     } catch (err) {
       console.error("Erro ao carregar lista de clientes:", err);
       setConnectionError(true);
@@ -136,104 +147,79 @@ export default function Clientes() {
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     fetchClientes();
   }, []);
 
   return (
-    <div className="clientes-container">
-      <div className="clientes-header">
+    <div className="container">
+      <div className="header">
         <h2>Cadastro de Clientes</h2>
-        <p>Gerencie os clientes do seu sistema de logística</p>
+        <p>Gerencie os clientes do seu sistema</p>
       </div>
 
       {connectionError && (
-        <div className="connection-error">
-          Não foi possível conectar ao servidor. Verifique se o servidor está em execução.
+        <div className="alert-error">
+          Erro de conexão com o servidor. Verifique sua rede.
         </div>
       )}
 
-      <div className="clientes-content">
-        <form onSubmit={handleSubmit} className="clientes-form">
-          <div className="form-group">
-            <label htmlFor="nome">Nome Completo</label>
-            <input
-              id="nome"
-              name="nome"
-              placeholder="Digite o nome completo"
-              value={form.nome}
-              onChange={handleChange}
-              className={errors.nome ? "input-error" : ""}
-            />
-            {errors.nome && <span className="error-message">{errors.nome}</span>}
-          </div>
+      <div className="content">
+        <form onSubmit={handleSubmit} className="form">
+          {["nome", "cpfOuCnpj", "email", "endereco"].map((field) => (
+            <div key={field} className="form-group">
+              <label htmlFor={field}>
+                {field === "cpfOuCnpj" ? "CPF/CNPJ" : 
+                 field === "nome" ? "Nome Completo" : 
+                 field === "email" ? "E-mail" : "Endereço"}
+              </label>
+              <input
+                id={field}
+                name={field}
+                type={field === "email" ? "email" : "text"}
+                placeholder={
+                  field === "cpfOuCnpj" ? "Digite CPF ou CNPJ" :
+                  field === "nome" ? "Digite o nome completo" :
+                  field === "email" ? "exemplo@email.com" : "Rua, número, bairro, cidade"
+                }
+                value={form[field]}
+                onChange={handleChange}
+                className={errors[field] ? "input-error" : ""}
+              />
+              {errors[field] && <span className="error">{errors[field]}</span>}
+            </div>
+          ))}
 
-          <div className="form-group">
-            <label htmlFor="cpfOuCnpj">CPF/CNPJ</label>
-            <input
-              id="cpfOuCnpj"
-              name="cpfOuCnpj"
-              placeholder="Digite CPF ou CNPJ"
-              value={form.cpfOuCnpj}
-              onChange={handleChange}
-              className={errors.cpfOuCnpj ? "input-error" : ""}
-            />
-            {errors.cpfOuCnpj && <span className="error-message">{errors.cpfOuCnpj}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email">E-mail</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="exemplo@email.com"
-              value={form.email}
-              onChange={handleChange}
-              className={errors.email ? "input-error" : ""}
-            />
-            {errors.email && <span className="error-message">{errors.email}</span>}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="endereco">Endereço</label>
-            <input
-              id="endereco"
-              name="endereco"
-              placeholder="Rua, número, bairro, cidade"
-              value={form.endereco}
-              onChange={handleChange}
-              className={errors.endereco ? "input-error" : ""}
-            />
-            {errors.endereco && <span className="error-message">{errors.endereco}</span>}
-          </div>
-
-          <button type="submit" className="submit-button" disabled={isLoading}>
-            {isLoading ? "Salvando..." : editingId ? "Editar Cliente" : "Cadastrar Cliente"}
-          </button>
-
-          {editingId && (
-            <button
-              onClick={() => {
-                setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "" });
-                setEditingId(null);
-              }}
-              className="clear-button"
-            >
-              Cancelar Edição
+          <div className="buttons">
+            <button type="submit" className="btn primary" disabled={isLoading}>
+              {isLoading ? <span className="spinner"></span> : null}
+              {editingId ? "Atualizar" : "Cadastrar"}
             </button>
-          )}
+            
+            {editingId && (
+              <button 
+                type="button" 
+                className="btn secondary"
+                onClick={() => {
+                  setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "" });
+                  setEditingId(null);
+                }}
+              >
+                Cancelar
+              </button>
+            )}
+          </div>
         </form>
 
-        <div className="clientes-list">
+        <div className="list">
           <h3>Clientes Cadastrados</h3>
           
           {isLoading ? (
-            <p>Carregando clientes...</p>
-          ) : Array.isArray(clientes) && clientes.length > 0 ? (
-            <table className="clientes-table">
+            <p>Carregando...</p>
+          ) : clientes.length > 0 ? (
+            <table>
               <thead>
                 <tr>
                   <th>Nome</th>
@@ -245,25 +231,35 @@ export default function Clientes() {
               </thead>
               <tbody>
                 {clientes.map((cliente) => (
-                  <tr key={cliente.id || cliente.cpfOuCnpj}>
+                  <tr key={cliente.id}>
                     <td>{cliente.nome}</td>
                     <td>{cliente.cpfOuCnpj}</td>
                     <td>{cliente.email}</td>
                     <td>{cliente.endereco}</td>
                     <td>
-                      <button 
-                        onClick={() => handleEdit(cliente)}
-                        className="edit-button"
-                      >
-                        Editar
-                      </button>
+                      <div className="actions">
+                        <button 
+                          onClick={() => handleEdit(cliente)}
+                          className="btn edit"
+                          disabled={isLoading}
+                        >
+                          Editar
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(cliente.id)}
+                          className="btn delete"
+                          disabled={isLoading}
+                        >
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           ) : (
-            <p className="empty-message">Nenhum cliente cadastrado ainda.</p>
+            <p className="empty">Nenhum cliente cadastrado</p>
           )}
         </div>
       </div>

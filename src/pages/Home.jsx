@@ -77,9 +77,7 @@ export default function Home() {
         <div className="footer-content">
           <p>© Desenvolvido por Gustavson Barros - 2025 Route Manager - Todos os direitos reservados</p>
           <div className="footer-links">
-            <Link to="/termos">Termos</Link>
-            <Link to="/privacidade">Privacidade</Link>
-            <Link to="/contato">Contato</Link>
+            
           </div>
         </div>
       </footer>

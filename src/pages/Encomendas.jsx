@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { EncomendaForm } from "../components/EncomendaForm";
 import { EncomendaList } from "./EncomendaList";
 import { listarEncomendas, cadastrarEncomenda } from "../services/encomendaService";
+import "./Encomendas.css";
 
 export default function Encomendas() {
   const [encomendas, setEncomendas] = useState([]);
 
-  
   useEffect(() => {
     async function carregarEncomendas() {
       try {
@@ -20,7 +20,6 @@ export default function Encomendas() {
     carregarEncomendas();
   }, []);
 
-  
   const handleCadastrar = async (novaEncomenda) => {
     try {
       await cadastrarEncomenda(novaEncomenda);
@@ -33,12 +32,21 @@ export default function Encomendas() {
   };
 
   return (
-    <div className="encomendas-page">
-      <h2>Cadastro de Encomendas</h2>
-      <EncomendaForm onSubmit={handleCadastrar} />
-      
-      <h2>Lista de Encomendas</h2>
-      <EncomendaList encomendas={encomendas} />
+    <div className="encomendas-container">
+      <header className="page-header">
+        <h1>Gerenciamento de Encomendas</h1>
+      </header>
+
+      <div className="content-grid">
+        <section className="cadastro-section card">
+          <h2>Cadastrar Nova Encomenda</h2>
+          <EncomendaForm onSubmit={handleCadastrar} />
+        </section>
+
+        <section className="lista-section card">
+          <EncomendaList encomendas={encomendas} />
+        </section>
+      </div>
     </div>
   );
 }
