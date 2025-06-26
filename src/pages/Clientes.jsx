@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
-import { FiUser, FiMail, FiMapPin, FiAlertCircle, FiEdit2, FiTrash2, FiPlus, FiX } from "react-icons/fi";
-import "./Clientes.css";
+import { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
+import { FiUser, FiMail, FiAlertCircle, FiEdit2, FiTrash2, FiX, FiSearch, FiChevronUp, FiChevronDown, FiDownload } from 'react-icons/fi';
+import './Clientes.css';
 
 const api = axios.create({
   baseURL: "http://localhost:3001",
@@ -9,6 +9,7 @@ const api = axios.create({
 });
 
 export default function Clientes() {
+  // Estados
   const [clientes, setClientes] = useState([]);
   const [form, setForm] = useState({
     nome: "",
@@ -22,51 +23,82 @@ export default function Clientes() {
   const [connectionError, setConnectionError] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: 'nome', direction: 'asc' });
+  const [clientToDelete, setClientToDelete] = useState(null);
+  const clientsPerPage = 8;
 
+  // Formatação de CPF/CNPJ
+  const formatCPFCNPJ = (value) => {
+    const nums = value.replace(/\D/g, '');
+    if (nums.length <= 11) {
+      return nums.replace(/(\d{3})(\d)/, '$1.$2')
+                 .replace(/(\d{3})(\d)/, '$1.$2')
+                 .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    }
+    return nums.replace(/^(\d{2})(\d)/, '$1.$2')
+               .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+               .replace(/\.(\d{3})(\d)/, '.$1/$2')
+               .replace(/(\d{4})(\d)/, '$1-$2');
+  };
+
+  // Handlers
   const handleChange = (e) => {
     const { name, value } = e.target;
     let formattedValue = value;
 
-    if (name === "cpfOuCnpj") {
-      const onlyNumbers = value.replace(/\D/g, "");
-      
-      if (onlyNumbers.length <= 11) {
-        formattedValue = onlyNumbers
-          .replace(/(\d{3})(\d)/, "$1.$2")
-          .replace(/(\d{3})(\d)/, "$1.$2")
-          .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-      } else {
-        formattedValue = onlyNumbers
-          .replace(/^(\d{2})(\d)/, "$1.$2")
-          .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
-          .replace(/\.(\d{3})(\d)/, ".$1/$2")
-          .replace(/(\d{4})(\d)/, "$1-$2");
-      }
-    }
+    if (name === 'cpfOuCnpj') formattedValue = formatCPFCNPJ(value);
 
-    setForm({ ...form, [name]: formattedValue });
-    if (errors[name]) setErrors({ ...errors, [name]: null });
+    setForm(prev => ({ ...prev, [name]: formattedValue }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 
   const validateForm = () => {
     const newErrors = {};
-    const onlyNumbersCpfCnpj = form.cpfOuCnpj.replace(/\D/g, "");
+    const numsCPFCNPJ = form.cpfOuCnpj.replace(/\D/g, '');
 
-    if (form.nome.trim().length < 3) newErrors.nome = "Nome deve ter pelo menos 3 caracteres";
-    
-    if (onlyNumbersCpfCnpj.length === 11 && !/^\d{11}$/.test(onlyNumbersCpfCnpj)) {
-      newErrors.cpfOuCnpj = "CPF inválido";
-    } else if (onlyNumbersCpfCnpj.length === 14 && !/^\d{14}$/.test(onlyNumbersCpfCnpj)) {
-      newErrors.cpfOuCnpj = "CNPJ inválido";
-    } else if (![11, 14].includes(onlyNumbersCpfCnpj.length)) {
-      newErrors.cpfOuCnpj = onlyNumbersCpfCnpj.length < 11 ? "CPF deve ter 11 dígitos" : "CNPJ deve ter 14 dígitos";
-    }
-    
+    if (!form.nome.trim()) newErrors.nome = "Nome é obrigatório";
+    if (!numsCPFCNPJ) newErrors.cpfOuCnpj = "CPF/CNPJ é obrigatório";
+    if (!form.email) newErrors.email = "E-mail é obrigatório";
+    if (!form.endereco.trim()) newErrors.endereco = "Endereço é obrigatório";
+
+    if (numsCPFCNPJ.length === 11 && !/^\d{11}$/.test(numsCPFCNPJ)) newErrors.cpfOuCnpj = "CPF inválido";
+    if (numsCPFCNPJ.length === 14 && !/^\d{14}$/.test(numsCPFCNPJ)) newErrors.cpfOuCnpj = "CNPJ inválido";
+    if (![11, 14].includes(numsCPFCNPJ.length)) newErrors.cpfOuCnpj = "CPF/CNPJ inválido";
     if (!/\S+@\S+\.\S+/.test(form.email)) newErrors.email = "E-mail inválido";
     if (form.endereco.trim().length < 5) newErrors.endereco = "Endereço muito curto";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  
+  const handleEdit = (cliente) => {
+    setForm({
+      nome: cliente.nome,
+      cpfOuCnpj: cliente.cpfOuCnpj,
+      email: cliente.email,
+      endereco: cliente.endereco,
+      status: cliente.status || "ativo"
+    });
+    setEditingId(cliente.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  
+  const fetchClientes = async () => {
+    try {
+      setIsLoading(true);
+      setConnectionError(false);
+      const res = await api.get("/clientes");
+      setClientes(Array.isArray(res?.data) ? res.data.filter(c => c?.id) : []);
+    } catch (err) {
+      console.error("Erro ao carregar clientes:", err);
+      setConnectionError(true);
+      setClientes([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -74,16 +106,13 @@ export default function Clientes() {
     if (!validateForm()) return;
 
     setIsLoading(true);
-    
     try {
       if (editingId) {
         await api.put(`/clientes/${editingId}`, form);
       } else {
         await api.post("/clientes", form);
       }
-      
-      setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "", status: "ativo" });
-      setEditingId(null);
+      resetForm();
       await fetchClientes();
     } catch (err) {
       console.error("Erro ao salvar cliente:", err);
@@ -93,62 +122,94 @@ export default function Clientes() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Tem certeza que deseja excluir este cliente?")) return;
-    
+  const handleDeleteClick = (id) => setClientToDelete(id);
+  const cancelDelete = () => setClientToDelete(null);
+
+  const confirmDelete = async () => {
+    if (!clientToDelete) return;
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      await api.delete(`/clientes/${id}`);
+      await api.delete(`/clientes/${clientToDelete}`);
       await fetchClientes();
     } catch (err) {
       console.error("Erro ao excluir cliente:", err);
     } finally {
       setIsLoading(false);
+      setClientToDelete(null);
     }
   };
 
-  const handleEdit = (cliente) => {
-    setForm(cliente);
-    setEditingId(cliente.id);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const resetForm = () => {
+    setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "", status: "ativo" });
+    setEditingId(null);
   };
 
-  const fetchClientes = async () => {
-    try {
-      setIsLoading(true);
-      setConnectionError(false);
-      const res = await api.get("/clientes");
-      
-      const clientesData = Array.isArray(res?.data) 
-        ? res.data.filter(cliente => cliente?.id)
-        : [];
-      
-      setClientes(clientesData);
-    } catch (err) {
-      console.error("Erro ao carregar lista de clientes:", err);
-      setConnectionError(true);
-      setClientes([]);
-    } finally {
-      setIsLoading(false);
+  
+  const sortedClients = useMemo(() => {
+    let sortableItems = [...clientes];
+    if (sortConfig.key) {
+      sortableItems.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (a[sortConfig.key] > b[sortConfig.key]) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
     }
-  };
+    return sortableItems;
+  }, [clientes, sortConfig]);
 
-  const filteredClientes = clientes.filter(cliente =>
-    cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cliente.cpfOuCnpj.includes(searchTerm) ||
-    cliente.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredClients = sortedClients.filter(cliente =>
+    Object.values(cliente).some(
+      value => value && value.toString().toLowerCase().includes(searchTerm.toLowerCase())
+    )
   );
 
+  const indexOfLastClient = currentPage * clientsPerPage;
+  const indexOfFirstClient = indexOfLastClient - clientsPerPage;
+  const currentClients = filteredClients.slice(indexOfFirstClient, indexOfLastClient);
+  const totalPages = Math.ceil(filteredClients.length / clientsPerPage);
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  // Exportação
+  const exportToCSV = () => {
+    const headers = ['Nome', 'CPF/CNPJ', 'E-mail', 'Endereço', 'Status'];
+    const data = filteredClients.map(client => [
+      `"${client.nome}"`,
+      `"${client.cpfOuCnpj}"`,
+      `"${client.email}"`,
+      `"${client.endereco}"`,
+      `"${client.status}"`
+    ].join(','));
+
+    const csvContent = [
+      headers.join(','),
+      ...data
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'clientes.csv';
+    link.click();
+  };
+
+  // Efeitos
   useEffect(() => {
     fetchClientes();
   }, []);
 
   return (
-    <div className="container">
-      <div className="header">
-        <h2>Gestão de Clientes</h2>
+    <div className="clientes-container">
+      <header className="clientes-header">
+        <h1>Gestão de Clientes</h1>
         <p>Cadastre e gerencie os clientes do sistema</p>
-      </div>
+      </header>
 
       {connectionError && (
         <div className="alert-error">
@@ -156,108 +217,100 @@ export default function Clientes() {
         </div>
       )}
 
-      <div className="content">
-        <form onSubmit={handleSubmit} className="form">
-          <h3>{editingId ? "Editar Cliente" : "Cadastrar Novo Cliente"}</h3>
+      <div className="clientes-content">
+        <form onSubmit={handleSubmit} className="clientes-form">
+          <h2>{editingId ? 'Editar Cliente' : 'Cadastrar Cliente'}</h2>
           
           <div className="form-group">
-            <label htmlFor="nome">Nome Completo</label>
+            <label>Nome Completo*</label>
             <input
-              id="nome"
               name="nome"
-              type="text"
-              placeholder="Digite o nome completo"
               value={form.nome}
               onChange={handleChange}
-              className={errors.nome ? "input-error" : ""}
+              placeholder="Digite o nome completo"
+              className={errors.nome ? 'input-error' : ''}
             />
             {errors.nome && <span className="error">{errors.nome}</span>}
           </div>
-          
+
           <div className="form-group">
-            <label htmlFor="cpfOuCnpj">CPF/CNPJ</label>
+            <label>CPF/CNPJ*</label>
             <input
-              id="cpfOuCnpj"
               name="cpfOuCnpj"
-              type="text"
-              placeholder="Digite CPF ou CNPJ"
               value={form.cpfOuCnpj}
               onChange={handleChange}
-              className={errors.cpfOuCnpj ? "input-error" : ""}
+              placeholder="Digite CPF ou CNPJ"
+              className={errors.cpfOuCnpj ? 'input-error' : ''}
             />
             {errors.cpfOuCnpj && <span className="error">{errors.cpfOuCnpj}</span>}
           </div>
-          
+
           <div className="form-group">
-            <label htmlFor="email">E-mail</label>
+            <label>E-mail*</label>
             <input
-              id="email"
               name="email"
               type="email"
-              placeholder="exemplo@email.com"
               value={form.email}
               onChange={handleChange}
-              className={errors.email ? "input-error" : ""}
+              placeholder="exemplo@email.com"
+              className={errors.email ? 'input-error' : ''}
             />
             {errors.email && <span className="error">{errors.email}</span>}
           </div>
-          
+
           <div className="form-group">
-            <label htmlFor="endereco">Endereço</label>
+            <label>Endereço*</label>
             <input
-              id="endereco"
               name="endereco"
-              type="text"
-              placeholder="Rua, número, bairro, cidade"
               value={form.endereco}
               onChange={handleChange}
-              className={errors.endereco ? "input-error" : ""}
+              placeholder="Rua, número, bairro, cidade"
+              className={errors.endereco ? 'input-error' : ''}
             />
             {errors.endereco && <span className="error">{errors.endereco}</span>}
           </div>
 
-          <div className="buttons">
-            <button type="submit" className="btn primary" disabled={isLoading}>
-              {isLoading ? <span className="spinner"></span> : null}
-              {editingId ? "Atualizar Cliente" : "Cadastrar Cliente"}
+          <div className="form-actions">
+            <button type="submit" className="btn-primary" disabled={isLoading}>
+              {isLoading ? 'Salvando...' : editingId ? 'Atualizar' : 'Cadastrar'}
             </button>
-            
             {editingId && (
-              <button 
-                type="button" 
-                className="btn secondary"
-                onClick={() => {
-                  setForm({ nome: "", cpfOuCnpj: "", email: "", endereco: "", status: "ativo" });
-                  setEditingId(null);
-                }}
-                disabled={isLoading}
-              >
+              <button type="button" className="btn-secondary" onClick={resetForm} disabled={isLoading}>
                 <FiX /> Cancelar
               </button>
             )}
           </div>
         </form>
 
-        <div className="list">
-          <div className="search-container">
-            <input
-              type="text"
-              placeholder="Pesquisar clientes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
+        <div className="clientes-list">
+          <div className="list-actions">
+            <div className="search-box">
+              <FiSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="Pesquisar clientes..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            <button onClick={exportToCSV} className="btn-export">
+              <FiDownload /> Exportar
+            </button>
           </div>
-          
-          <h3>Clientes Cadastrados</h3>
-          
-          {isLoading ? (
-            <p>Carregando...</p>
-          ) : filteredClientes.length > 0 ? (
+
+          <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>Nome</th>
+                  <th onClick={() => requestSort('nome')} className="sortable">
+                    Nome
+                    {sortConfig.key === 'nome' && (
+                      sortConfig.direction === 'asc' ? <FiChevronUp /> : <FiChevronDown />
+                    )}
+                  </th>
                   <th>CPF/CNPJ</th>
                   <th>E-mail</th>
                   <th>Status</th>
@@ -265,56 +318,101 @@ export default function Clientes() {
                 </tr>
               </thead>
               <tbody>
-                {filteredClientes.map((cliente) => (
-                  <tr key={cliente.id}>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <FiUser className="text-gray-500" />
-                        {cliente.nome}
-                      </div>
-                    </td>
-                    <td>{cliente.cpfOuCnpj}</td>
-                    <td>
-                      <div className="flex items-center gap-2">
-                        <FiMail className="text-gray-500" />
-                        {cliente.email}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`status-badge status-${cliente.status || 'ativo'}`}>
-                        {cliente.status === 'inativo' ? 'Inativo' : 'Ativo'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="actions">
-                        <button 
-                          onClick={() => handleEdit(cliente)}
-                          className="edit"
-                          disabled={isLoading}
-                        >
-                          <FiEdit2 size={14} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(cliente.id)}
-                          className="delete"
-                          disabled={isLoading}
-                        >
-                          <FiTrash2 size={14} />
-                        </button>
-                      </div>
+                {isLoading && currentClients.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="loading-row">
+                      Carregando clientes...
                     </td>
                   </tr>
-                ))}
+                ) : currentClients.length > 0 ? (
+                  currentClients.map(cliente => (
+                    <tr key={cliente.id}>
+                      <td>
+                        <div className="client-name">
+                          <FiUser /> {cliente.nome}
+                        </div>
+                      </td>
+                      <td>{cliente.cpfOuCnpj}</td>
+                      <td>
+                        <div className="client-email">
+                          <FiMail /> {cliente.email}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`status-badge ${cliente.status === 'ativo' ? 'active' : 'inactive'}`}>
+                          {cliente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="action-buttons">
+                          <button onClick={() => handleEdit(cliente)} className="btn-edit">
+                            <FiEdit2 />
+                          </button>
+                          <button onClick={() => handleDeleteClick(cliente.id)} className="btn-delete">
+                            <FiTrash2 />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="empty-row">
+                      Nenhum cliente encontrado
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
-          ) : (
-            <div className="empty">
-              <FiUser size={48} className="mx-auto mb-4 text-gray-300" />
-              <p>Nenhum cliente encontrado</p>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+                disabled={currentPage === 1}
+              >
+                Anterior
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={currentPage === page ? 'active' : ''}
+                >
+                  {page}
+                </button>
+              ))}
+              
+              <button 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+                disabled={currentPage === totalPages}
+              >
+                Próxima
+              </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal de confirmação */}
+      {clientToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Confirmar Exclusão</h3>
+            <p>Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.</p>
+            <div className="modal-actions">
+              <button onClick={cancelDelete} className="btn-secondary">
+                Cancelar
+              </button>
+              <button onClick={confirmDelete} className="btn-danger" disabled={isLoading}>
+                {isLoading ? 'Excluindo...' : 'Confirmar Exclusão'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
