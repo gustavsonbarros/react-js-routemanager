@@ -85,7 +85,7 @@ export default function Home() {
           <p>Comece agora e experimente a transformação na sua operação de entregas</p>
           <div className="cta-buttons">
             <Link to="/clientes" className="cta-button primary">
-              Cadastrar primeiro cliente
+              Cadastrar Novo Cliente
             </Link>
             <Link to="/encomendas" className="cta-button secondary">
               Registrar nova encomenda
@@ -98,7 +98,7 @@ export default function Home() {
       <footer className="main-footer">
         <div className="footer-content">
           <p>© {new Date().getFullYear()} Route Manager Pro - Todos os direitos reservados</p>
-          <p className="footer-developer">Desenvolvido por Gustavo Barros</p>
+          <p className="footer-developer">Desenvolvido por Gustavson Barros</p>
         </div>
       </footer>
     </div>
