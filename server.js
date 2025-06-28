@@ -51,6 +51,42 @@ app.delete('/clientes/:id', (req, res) => {
   res.status(204).send();
 });
 
+let encomendas = [];
+let encomendaCurrentId = 1;
+
+app.get('/encomendas', (req, res) => {
+  res.json(encomendas);
+});
+
+app.post('/encomendas', (req, res) => {
+  const novaEncomenda = {
+    id: encomendaCurrentId.toString(),
+    ...req.body,
+    dataCadastro: new Date().toISOString()
+  };
+  encomendas.push(novaEncomenda);
+  encomendaCurrentId++;
+  res.status(201).json(novaEncomenda);
+});
+
+app.put('/encomendas/:id', (req, res) => {
+  const { id } = req.params;
+  const index = encomendas.findIndex(e => e.id === id);
+  
+  if (index === -1) {
+    return res.status(404).json({ message: 'Encomenda não encontrada' });
+  }
+  
+  encomendas[index] = { ...encomendas[index], ...req.body, id };
+  res.json(encomendas[index]);
+});
+
+app.delete('/encomendas/:id', (req, res) => {
+  const { id } = req.params;
+  encomendas = encomendas.filter(e => e.id !== id);
+  res.status(204).send();
+});
+
 app.listen(3001, () => {
   console.log('Servidor rodando na porta 3001');
 });

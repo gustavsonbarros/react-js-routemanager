@@ -542,7 +542,7 @@ tr:hover td {
   color: #b91c1c;
 }
 
-/* Célula de descrição */
+
 .descricao-cell {
   max-width: 250px;
   white-space: nowrap;
@@ -551,7 +551,7 @@ tr:hover td {
 }
 
 
-/* Garanta que o textarea tenha estilo consistente */
+
 textarea {
   width: 100%;
   padding: 0.75rem;
