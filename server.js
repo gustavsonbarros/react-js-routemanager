@@ -6,9 +6,26 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Dados iniciais
 let clientes = [];
-let currentId = 1; 
+let currentId = 1;
 
+let encomendas = [];
+let encomendaCurrentId = 1;
+
+let centros = [
+  { id: "1", nome: "Centro SP", cidade: "São Paulo", estado: "SP" },
+  { id: "2", nome: "Centro RJ", cidade: "Rio de Janeiro", estado: "RJ" },
+  { id: "3", nome: "Centro MG", cidade: "Belo Horizonte", estado: "MG" }
+];
+
+let rotas = [];
+let rotaCurrentId = 1;
+
+let entregas = [];
+let entregaCurrentId = 1;
+
+// Endpoints para clientes
 app.get('/clientes', (req, res) => {
   res.json(clientes);
 });
@@ -33,7 +50,6 @@ app.put('/clientes/:id', (req, res) => {
     return res.status(404).json({ message: 'Cliente não encontrado' });
   }
   
-  
   clientes[index] = { ...clientes[index], ...updatedCliente, id };
   res.json(clientes[index]);
 });
@@ -51,9 +67,7 @@ app.delete('/clientes/:id', (req, res) => {
   res.status(204).send();
 });
 
-let encomendas = [];
-let encomendaCurrentId = 1;
-
+// Endpoints para encomendas
 app.get('/encomendas', (req, res) => {
   res.json(encomendas);
 });
@@ -86,27 +100,6 @@ app.delete('/encomendas/:id', (req, res) => {
   encomendas = encomendas.filter(e => e.id !== id);
   res.status(204).send();
 });
-
-app.listen(3001, () => {
-  console.log('Servidor rodando na porta 3001');
-});
-
-// Adicionar no server.js
-
-// Centros de distribuição
-let centros = [
-  { id: "1", nome: "Centro SP", cidade: "São Paulo", estado: "SP" },
-  { id: "2", nome: "Centro RJ", cidade: "Rio de Janeiro", estado: "RJ" },
-  { id: "3", nome: "Centro MG", cidade: "Belo Horizonte", estado: "MG" }
-];
-
-// Rotas
-let rotas = [];
-let rotaCurrentId = 1;
-
-// Entregas
-let entregas = [];
-let entregaCurrentId = 1;
 
 // Endpoints para centros
 app.get('/centros', (req, res) => {
@@ -221,4 +214,9 @@ app.get('/entregas/:id/historico', (req, res) => {
   }
   
   res.json(historico);
+});
+
+// Inicia o servidor
+app.listen(3001, () => {
+  console.log('Servidor rodando na porta 3001');
 });
