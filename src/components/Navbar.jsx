@@ -27,6 +27,16 @@ export default function Navbar() {
             </Link>
           </li>
           <li className="navbar-item">
+            <Link to="/rotas" className="navbar-link">
+              Rotas
+            </Link>
+          </li>
+          <li className="navbar-item">
+            <Link to="/entregas" className="navbar-link">
+              Entregas
+            </Link>
+          </li>
+          <li className="navbar-item">
             <Link to="/rastreamento" className="navbar-link">
               Rastreamento
             </Link>
