@@ -1,6 +1,16 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FiCalendar, FiTruck, FiUser, FiPackage, FiEdit2, FiTrash2, FiX, FiSearch } from 'react-icons/fi';
+import { 
+  FiCalendar, 
+  FiTruck, 
+  FiUser, 
+  FiPackage, 
+  FiEdit2, 
+  FiTrash2, 
+  FiX, 
+  FiSearch,
+  FiMapPin 
+} from 'react-icons/fi';
 import './Entregas.css';
 
 const api = axios.create({ baseURL: "http://localhost:3001" });
