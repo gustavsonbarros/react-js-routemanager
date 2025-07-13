@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Truck, Search, AlertCircle, Clock, CheckCircle, MapPin } from "react-feather";
 import axios from "axios";
 import "./Rastreamento.css";
@@ -14,33 +14,45 @@ const STATUS_MAP = {
 
 export default function Rastreamento() {
   const [codigo, setCodigo] = useState("");
-  const [cliente, setCliente] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
   const [entrega, setEntrega] = useState(null);
   const [historico, setHistorico] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [clientes, setClientes] = useState([]);
+
+  // Carrega lista de clientes ao iniciar
+  useEffect(() => {
+    const fetchClientes = async () => {
+      try {
+        const res = await api.get("/clientes");
+        setClientes(res.data);
+      } catch (err) {
+        console.error("Erro ao carregar clientes:", err);
+      }
+    };
+    fetchClientes();
+  }, []);
 
   const buscarEntrega = async (e) => {
-  e.preventDefault();
-  
-  if (!codigo && !cliente && !statusFilter) {
-    setError("Preencha pelo menos um filtro para buscar");
-    return;
-  }
-  
-  setLoading(true);
-  setError("");
-  setEntrega(null);
-  setHistorico([]);
-  
-  try {
-    if (codigo) {
-      // Verifica se o código tem formato válido
+    e.preventDefault();
+
+    if (!codigo) {
+      setError("Digite um código de rastreio válido");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setEntrega(null);
+    setHistorico([]);
+
+    try {
+      // Verifica formato do código (ENT0001)
       if (!/^ENT\d{4}$/.test(codigo)) {
         throw new Error("Código inválido. Use o formato ENT0001");
       }
 
+      // Busca entrega e histórico simultaneamente
       const [entregaRes, historicoRes] = await Promise.all([
         api.get(`/entregas/${codigo}`),
         api.get(`/entregas/${codigo}/historico`)
@@ -48,36 +60,15 @@ export default function Rastreamento() {
       
       setEntrega(entregaRes.data);
       setHistorico(historicoRes.data);
-    } else {
-      const params = {};
-      if (cliente) params.cliente = cliente;
-      if (statusFilter) params.status = statusFilter;
-      
-      const res = await api.get("/entregas", { params });
-      if (res.data.length > 0) {
-        const primeiraEntrega = res.data[0];
-        const [entregaDetalhes, historico] = await Promise.all([
-          api.get(`/entregas/${primeiraEntrega.id}`),
-          api.get(`/entregas/${primeiraEntrega.id}/historico`)
-        ]);
-        
-        setEntrega(entregaDetalhes.data);
-        setHistorico(historico.data);
-      } else {
-        setError("Nenhuma entrega encontrada com os filtros aplicados");
-      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || "Erro ao buscar entrega");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    setError(err.response?.data?.message || err.message || "Erro ao buscar entrega. Tente novamente.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-  const limparFiltros = () => {
+  const limparBusca = () => {
     setCodigo("");
-    setCliente("");
-    setStatusFilter("");
     setEntrega(null);
     setHistorico([]);
     setError("");
@@ -90,54 +81,27 @@ export default function Rastreamento() {
           <Truck size={28} className="icon-title" />
           Rastreamento de Entregas
         </h1>
-        <p>Consulte o status atual e histórico das suas encomendas</p>
+        <p>Informe o código de rastreio para consultar sua encomenda</p>
       </header>
       
       <form onSubmit={buscarEntrega} className="busca-form">
-        <div className="filtros-grid">
-          <div className="filtro-group">
-            <label htmlFor="codigo">Código de Rastreio</label>
-            <input
-              id="codigo"
-              type="text"
-              value={codigo}
-              onChange={(e) => setCodigo(e.target.value)}
-              placeholder="Ex: ENT0001"
-            />
-          </div>
-          
-          <div className="filtro-group">
-            <label htmlFor="cliente">Nome do Cliente</label>
-            <input
-              id="cliente"
-              type="text"
-              value={cliente}
-              onChange={(e) => setCliente(e.target.value)}
-              placeholder="Digite o nome do cliente"
-            />
-          </div>
-          
-          <div className="filtro-group">
-            <label htmlFor="status">Status</label>
-            <select
-              id="status"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">Todos os Status</option>
-              <option value="em_preparo">Em Preparo</option>
-              <option value="a_caminho">A Caminho</option>
-              <option value="entregue">Entregue</option>
-              <option value="cancelada">Cancelada</option>
-            </select>
-          </div>
+        <div className="filtro-group">
+          <label htmlFor="codigo">Código de Rastreio</label>
+          <input
+            id="codigo"
+            type="text"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+            placeholder="Ex: ENT0001"
+            required
+          />
         </div>
         
         <div className="form-actions">
           <button 
             type="submit" 
             className="btn-buscar"
-            disabled={loading}
+            disabled={loading || !codigo}
           >
             {loading ? (
               <span className="loading-spinner"></span>
@@ -152,7 +116,8 @@ export default function Rastreamento() {
           <button 
             type="button" 
             className="btn-limpar"
-            onClick={limparFiltros}
+            onClick={limparBusca}
+            disabled={!codigo && !entrega}
           >
             Limpar
           </button>
@@ -166,7 +131,7 @@ export default function Rastreamento() {
         </div>
       )}
       
-      {loading && !error && (
+      {loading && (
         <div className="loading-overlay">
           <div className="loading-content">
             <div className="spinner"></div>
@@ -196,12 +161,7 @@ export default function Rastreamento() {
             
             <div className="detalhe-item">
               <strong>Cliente:</strong>
-              <span>{entrega.clienteId}</span>
-            </div>
-            
-            <div className="detalhe-item">
-              <strong>Encomenda:</strong>
-              <span>{entrega.encomendaId}</span>
+              <span>{clientes.find(c => c.id === entrega.clienteId)?.nome || entrega.clienteId}</span>
             </div>
             
             <div className="detalhe-item">
@@ -218,9 +178,7 @@ export default function Rastreamento() {
             </div>
           </div>
           
-          <h3 className="historico-title">
-            Histórico de Atualizações
-          </h3>
+          <h3 className="historico-title">Histórico de Atualizações</h3>
           
           <div className="historico-timeline">
             {historico.map((item, index) => (
@@ -235,7 +193,9 @@ export default function Rastreamento() {
                 
                 <div className="timeline-content">
                   <div className="timeline-header">
-                    <span className="timeline-date">{item.data}</span>
+                    <span className="timeline-date">
+                      {new Date(item.data).toLocaleDateString()} - {new Date(item.data).toLocaleTimeString()}
+                    </span>
                     <span 
                       className="timeline-status"
                       style={{ color: STATUS_MAP[item.status]?.color }}
@@ -263,7 +223,7 @@ export default function Rastreamento() {
         <div className="empty-state">
           <img src="/icons/package-search.svg" alt="Nenhuma busca realizada" />
           <h3>Nenhuma entrega consultada</h3>
-          <p>Preencha os filtros acima para rastrear uma encomenda</p>
+          <p>Informe o código de rastreio no campo acima</p>
         </div>
       )}
     </div>

@@ -210,19 +210,13 @@ app.delete('/entregas/:id', (req, res) => {
 //teste de funcao
 app.get('/entregas/:id', (req, res) => {
   const { id } = req.params;
-  
-  // Verifica se o ID começa com "ENT" seguido de números
-  if (!/^ENT\d{4}$/.test(id)) {
-    return res.status(400).json({ message: 'Formato de ID inválido' });
-  }
-
   const entrega = entregas.find(e => e.id === id);
   
   if (!entrega) {
     return res.status(404).json({ message: 'Entrega não encontrada' });
   }
-  
-  // Adiciona informações do cliente e encomenda
+
+  // Busca informações adicionais
   const cliente = clientes.find(c => c.id === entrega.clienteId);
   const encomenda = encomendas.find(e => e.id === entrega.encomendaId);
   
