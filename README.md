@@ -57,16 +57,4 @@ git clone https://github.com/gustavsonbarros/react-js-routemanager
 cd route-manager
 
 
-### 2. Instale as Dependências
-Backend (servidor API)
-bash
-
-cd backend
-npm install
-
-Frontend (aplicação React)
-bash
-
-cd ../frontend
-npm install
 ```
