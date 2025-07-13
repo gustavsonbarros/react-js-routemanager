@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FiMapPin, FiClock, FiSearch, FiPlus, FiTrash2, FiEdit2, FiX } from 'react-icons/fi';
+import { FiMapPin, FiClock, FiSearch, FiTrash2, FiEdit2 } from 'react-icons/fi';
 import './Rotas.css';
 
 const api = axios.create({ baseURL: "http://localhost:3001" });
 
 export default function Rotas() {
   const [rotas, setRotas] = useState([]);
-  const [centros, setCentros] = useState([]);
   const [form, setForm] = useState({
     origem: "",
     destino: "",
-    centrosIntermediarios: [],
     distancia: "",
     tempoEstimado: ""
   });
@@ -22,7 +20,6 @@ export default function Rotas() {
 
   useEffect(() => {
     fetchRotas();
-    fetchCentros();
   }, []);
 
   const fetchRotas = async () => {
@@ -37,14 +34,7 @@ export default function Rotas() {
     }
   };
 
-  const fetchCentros = async () => {
-    try {
-      const res = await api.get("/centros");
-      setCentros(res.data);
-    } catch (err) {
-      console.error("Erro ao carregar centros:", err);
-    }
-  };
+
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -52,22 +42,7 @@ export default function Rotas() {
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
   };
 
-  const handleCentroChange = (e) => {
-    const centroId = e.target.value;
-    if (centroId && !form.centrosIntermediarios.includes(centroId)) {
-      setForm(prev => ({
-        ...prev,
-        centrosIntermediarios: [...prev.centrosIntermediarios, centroId]
-      }));
-    }
-  };
 
-  const removeCentro = (centroId) => {
-    setForm(prev => ({
-      ...prev,
-      centrosIntermediarios: prev.centrosIntermediarios.filter(id => id !== centroId)
-    }));
-  };
 
   const validateForm = () => {
     const newErrors = {};
@@ -107,7 +82,6 @@ export default function Rotas() {
     setForm({
       origem: rota.origem,
       destino: rota.destino,
-      centrosIntermediarios: rota.centrosIntermediarios || [],
       distancia: rota.distancia,
       tempoEstimado: rota.tempoEstimado
     });
@@ -129,7 +103,6 @@ export default function Rotas() {
     setForm({
       origem: "",
       destino: "",
-      centrosIntermediarios: [],
       distancia: "",
       tempoEstimado: ""
     });
@@ -206,36 +179,7 @@ export default function Rotas() {
           </div>
         </div>
         
-        <div className="form-group">
-          <label>Centros Intermediários</label>
-          <select onChange={handleCentroChange} value="">
-            <option value="">Selecione um centro</option>
-            {centros.map(centro => (
-              <option key={centro.id} value={centro.id}>
-                {centro.nome} - {centro.cidade}
-              </option>
-            ))}
-          </select>
-          
-          {form.centrosIntermediarios.length > 0 && (
-            <div className="centros-intermediarios">
-              <label>Centros selecionados:</label>
-              <div className="centros-list">
-                {form.centrosIntermediarios.map(centroId => {
-                  const centro = centros.find(c => c.id === centroId);
-                  return centro ? (
-                    <div key={centroId} className="centro-tag">
-                      {centro.nome}
-                      <button type="button" onClick={() => removeCentro(centroId)}>
-                        <FiX size={12} />
-                      </button>
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+
         
         <div className="form-actions">
           <button type="submit" className="btn-primary" disabled={loading}>
@@ -268,7 +212,6 @@ export default function Rotas() {
               <tr>
                 <th>Origem</th>
                 <th>Destino</th>
-                <th>Centros Intermediários</th>
                 <th>Distância (km)</th>
                 <th>Tempo Estimado (h)</th>
                 <th>Ações</th>
@@ -284,18 +227,6 @@ export default function Rotas() {
                   <tr key={rota.id}>
                     <td>{rota.origem}</td>
                     <td>{rota.destino}</td>
-                    <td>
-                      {rota.centrosIntermediarios?.length > 0 ? (
-                        rota.centrosIntermediarios.map(centroId => {
-                          const centro = centros.find(c => c.id === centroId);
-                          return centro ? (
-                            <div key={centroId} className="centro-tag">
-                              {centro.nome}
-                            </div>
-                          ) : null;
-                        })
-                      ) : '-'}
-                    </td>
                     <td>{parseFloat(rota.distancia).toFixed(1)}</td>
                     <td>{parseFloat(rota.tempoEstimado).toFixed(1)}</td>
                     <td>

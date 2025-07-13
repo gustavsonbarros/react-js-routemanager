@@ -13,7 +13,13 @@ import {
 } from 'react-icons/fi';
 import './Entregas.css';
 
-const api = axios.create({ baseURL: "http://localhost:3001" });
+const api = axios.create({ 
+  baseURL: "http://localhost:3001",
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 
 export default function Entregas() {
   const [entregas, setEntregas] = useState([]);
@@ -103,15 +109,26 @@ export default function Entregas() {
 
     setLoading(true);
     try {
+      const payload = {
+        clienteId: form.clienteId,
+        encomendaId: form.encomendaId,
+        rotaId: form.rotaId,
+        dataEstimada: form.dataEstimada,
+        status: form.status
+      };
+
+      console.log('Enviando dados:', payload); // Para debug
+
       if (editingId) {
-        await api.put(`/entregas/${editingId}`, form);
+        await api.put(`/entregas/${editingId}`, payload);
       } else {
-        await api.post("/entregas", form);
+        await api.post("/entregas", payload);
       }
       resetForm();
       await fetchEntregas();
     } catch (err) {
       console.error("Erro ao salvar entrega:", err);
+      console.error("Detalhes do erro:", err.response?.data); // Mostra mais detalhes do erro
     } finally {
       setLoading(false);
     }

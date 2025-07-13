@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Truck, Search, AlertCircle, Clock, CheckCircle, MapPin } from "react-feather";
+import axios from "axios";
 import "./Rastreamento.css";
 
-// Status possíveis para tradução e estilização
+const api = axios.create({ baseURL: "http://localhost:3001" });
+
 const STATUS_MAP = {
   em_preparo: { text: "Em Preparo", color: "var(--warning)", icon: <Clock size={18} /> },
   a_caminho: { text: "A Caminho", color: "var(--info)", icon: <Truck size={18} /> },
   entregue: { text: "Entregue", color: "var(--success)", icon: <CheckCircle size={18} /> },
-  cancelado: { text: "Cancelado", color: "var(--danger)", icon: <AlertCircle size={18} /> },
+  cancelada: { text: "Cancelada", color: "var(--danger)", icon: <AlertCircle size={18} /> },
 };
 
 export default function Rastreamento() {
@@ -20,80 +22,57 @@ export default function Rastreamento() {
   const [error, setError] = useState("");
 
   const buscarEntrega = async (e) => {
-    e.preventDefault();
-    
-    // Validação básica - pelo menos um filtro deve ser preenchido
-    if (!codigo && !cliente && !statusFilter) {
-      setError("Preencha pelo menos um filtro para buscar");
-      return;
-    }
-    
-    setLoading(true);
-    setError("");
-    
-    try {
-      // Simulação de chamada à API
-      // const params = new URLSearchParams();
-      // if (codigo) params.append('codigo', codigo);
-      // if (cliente) params.append('cliente', cliente);
-      // if (statusFilter) params.append('status', statusFilter);
-      // 
-      // const response = await fetch(`/api/entregas?${params.toString()}`);
-      // const data = await response.json();
-      
-      // Simulação de dados - remover quando integrar com API real
-      await new Promise(resolve => setTimeout(resolve, 800)); // Delay para simular carregamento
-      
-      if (codigo === "INVALIDO") {
-        throw new Error("Código de rastreamento inválido");
+  e.preventDefault();
+  
+  if (!codigo && !cliente && !statusFilter) {
+    setError("Preencha pelo menos um filtro para buscar");
+    return;
+  }
+  
+  setLoading(true);
+  setError("");
+  setEntrega(null);
+  setHistorico([]);
+  
+  try {
+    if (codigo) {
+      // Verifica se o código tem formato válido
+      if (!/^ENT\d{4}$/.test(codigo)) {
+        throw new Error("Código inválido. Use o formato ENT0001");
       }
+
+      const [entregaRes, historicoRes] = await Promise.all([
+        api.get(`/entregas/${codigo}`),
+        api.get(`/entregas/${codigo}/historico`)
+      ]);
       
-      // Dados mockados para demonstração
-      const mockData = {
-        id: codigo || "TRK" + Math.floor(Math.random() * 10000),
-        status: statusFilter || ["em_preparo", "a_caminho", "entregue", "cancelado"][Math.floor(Math.random() * 4)],
-        cliente: cliente || "Cliente " + ["Silva", "Santos", "Oliveira", "Pereira"][Math.floor(Math.random() * 4)],
-        encomenda: "Encomenda " + Math.floor(Math.random() * 100),
-        endereco: "Rua " + ["A", "B", "C"][Math.floor(Math.random() * 3)] + ", " + Math.floor(Math.random() * 1000),
-        dataPrevista: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      };
+      setEntrega(entregaRes.data);
+      setHistorico(historicoRes.data);
+    } else {
+      const params = {};
+      if (cliente) params.cliente = cliente;
+      if (statusFilter) params.status = statusFilter;
       
-      const mockHistorico = [
-        { 
-          data: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toLocaleString(), 
-          status: "em_preparo",
-          local: "Centro de Distribuição SP",
-          detalhes: "Encomenda recebida e em processo de preparo"
-        },
-        { 
-          data: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toLocaleString(), 
-          status: "a_caminho",
-          local: "Em trânsito",
-          detalhes: "Saiu para entrega"
-        }
-      ];
-      
-      if (mockData.status === "entregue" || mockData.status === "cancelado") {
-        mockHistorico.push({
-          data: new Date().toLocaleString(),
-          status: mockData.status,
-          local: mockData.endereco.split(",")[0],
-          detalhes: mockData.status === "entregue" 
-            ? "Encomenda entregue com sucesso" 
-            : "Encomenda cancelada a pedido do cliente"
-        });
+      const res = await api.get("/entregas", { params });
+      if (res.data.length > 0) {
+        const primeiraEntrega = res.data[0];
+        const [entregaDetalhes, historico] = await Promise.all([
+          api.get(`/entregas/${primeiraEntrega.id}`),
+          api.get(`/entregas/${primeiraEntrega.id}/historico`)
+        ]);
+        
+        setEntrega(entregaDetalhes.data);
+        setHistorico(historico.data);
+      } else {
+        setError("Nenhuma entrega encontrada com os filtros aplicados");
       }
-      
-      setEntrega(mockData);
-      setHistorico(mockHistorico);
-    } catch (err) {
-      setError(err.message || "Erro ao buscar entrega. Tente novamente.");
-      setEntrega(null);
-      setHistorico([]);
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (err) {
+    setError(err.response?.data?.message || err.message || "Erro ao buscar entrega. Tente novamente.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const limparFiltros = () => {
     setCodigo("");
@@ -123,7 +102,7 @@ export default function Rastreamento() {
               type="text"
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
-              placeholder="Ex: TRK12345"
+              placeholder="Ex: ENT0001"
             />
           </div>
           
@@ -149,7 +128,7 @@ export default function Rastreamento() {
               <option value="em_preparo">Em Preparo</option>
               <option value="a_caminho">A Caminho</option>
               <option value="entregue">Entregue</option>
-              <option value="cancelado">Cancelado</option>
+              <option value="cancelada">Cancelada</option>
             </select>
           </div>
         </div>
@@ -217,25 +196,25 @@ export default function Rastreamento() {
             
             <div className="detalhe-item">
               <strong>Cliente:</strong>
-              <span>{entrega.cliente}</span>
+              <span>{entrega.clienteId}</span>
             </div>
             
             <div className="detalhe-item">
               <strong>Encomenda:</strong>
-              <span>{entrega.encomenda}</span>
+              <span>{entrega.encomendaId}</span>
             </div>
             
             <div className="detalhe-item">
               <strong>Endereço:</strong>
               <span>
                 <MapPin size={14} />
-                {entrega.endereco}
+                {entrega.endereco || "Endereço não disponível"}
               </span>
             </div>
             
             <div className="detalhe-item">
               <strong>Previsão de Entrega:</strong>
-              <span>{entrega.dataPrevista}</span>
+              <span>{entrega.dataEstimada ? new Date(entrega.dataEstimada).toLocaleDateString() : "Não definida"}</span>
             </div>
           </div>
           
@@ -276,7 +255,7 @@ export default function Rastreamento() {
                 </div>
               </div>
             ))}
-          </div>
+          </div>  
         </div>
       )}
       

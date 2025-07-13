@@ -13,6 +13,8 @@ let currentId = 1;
 let encomendas = [];
 let encomendaCurrentId = 1;
 
+let entregaCurrentId = 1;
+
 let centros = [
   { id: "1", nome: "Centro SP", cidade: "São Paulo", estado: "SP" },
   { id: "2", nome: "Centro RJ", cidade: "Rio de Janeiro", estado: "RJ" },
@@ -23,7 +25,7 @@ let rotas = [];
 let rotaCurrentId = 1;
 
 let entregas = [];
-let entregaCurrentId = 1;
+
 
 // Endpoints para clientes
 app.get('/clientes', (req, res) => {
@@ -139,17 +141,49 @@ app.delete('/rotas/:id', (req, res) => {
   res.status(204).send();
 });
 
-// Endpoints para entregas
+
 app.get('/entregas', (req, res) => {
-  res.json(entregas);
+  const { id, cliente, status } = req.query;
+  
+  let resultado = [...entregas];
+  
+  if (id) {
+    resultado = resultado.filter(e => e.id.toLowerCase().includes(id.toLowerCase()));
+  }
+  
+  if (cliente) {
+    resultado = resultado.filter(e => e.clienteId.toLowerCase().includes(cliente.toLowerCase()));
+  }
+  
+  if (status) {
+    resultado = resultado.filter(e => e.status === status);
+  }
+  
+  res.json(resultado);
 });
 
 app.post('/entregas', (req, res) => {
+  const { clienteId, encomendaId, rotaId, dataEstimada, status } = req.body;
+  
+  // Validação mais robusta
+  if (!clienteId || !encomendaId || !rotaId || !dataEstimada) {
+    return res.status(400).json({ 
+      message: 'Dados incompletos',
+      required: ['clienteId', 'encomendaId', 'rotaId', 'dataEstimada']
+    });
+  }
+
   const novaEntrega = {
     id: `ENT${entregaCurrentId.toString().padStart(4, '0')}`,
-    ...req.body,
-    dataCriacao: new Date().toISOString()
+    clienteId,
+    encomendaId,
+    rotaId,
+    dataEstimada,
+    status: status || "em_preparo",
+    dataCriacao: new Date().toISOString(),
+    endereco: clientes.find(c => c.id === clienteId)?.endereco || "Endereço não disponível"
   };
+  
   entregas.push(novaEntrega);
   entregaCurrentId++;
   res.status(201).json(novaEntrega);
@@ -173,47 +207,82 @@ app.delete('/entregas/:id', (req, res) => {
   res.status(204).send();
 });
 
-app.get('/entregas/:id/historico', (req, res) => {
+//teste de funcao
+app.get('/entregas/:id', (req, res) => {
   const { id } = req.params;
+  
+  // Verifica se o ID começa com "ENT" seguido de números
+  if (!/^ENT\d{4}$/.test(id)) {
+    return res.status(400).json({ message: 'Formato de ID inválido' });
+  }
+
   const entrega = entregas.find(e => e.id === id);
   
   if (!entrega) {
     return res.status(404).json({ message: 'Entrega não encontrada' });
   }
   
-  // Simulação de histórico
-  const historico = [
+  // Adiciona informações do cliente e encomenda
+  const cliente = clientes.find(c => c.id === entrega.clienteId);
+  const encomenda = encomendas.find(e => e.id === entrega.encomendaId);
+  
+  res.json({
+    ...entrega,
+    clienteNome: cliente?.nome || "Cliente não encontrado",
+    encomendaDesc: encomenda?.descricao || "Encomenda não encontrada"
+  });
+});
+
+
+app.get('/entregas/:id/historico', (req, res) => {
+  const { id } = req.params;
+  
+  if (!/^ENT\d{4}$/.test(id)) {
+    return res.status(400).json({ message: 'Formato de ID inválido' });
+  }
+
+  const entrega = entregas.find(e => e.id === id);
+  
+  if (!entrega) {
+    return res.status(404).json({ message: 'Entrega não encontrada' });
+  }
+  
+  // Histórico baseado no status atual
+  const historicoBase = [
     {
       data: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       status: "em_preparo",
       local: "Centro de Distribuição",
       detalhes: "Entrega registrada no sistema"
-    },
-    {
+    }
+  ];
+
+  if (entrega.status !== "em_preparo") {
+    historicoBase.push({
       data: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
       status: "a_caminho",
       local: "Em trânsito",
       detalhes: "Saiu para entrega"
-    }
-  ];
-  
+    });
+  }
+
   if (entrega.status === "entregue") {
-    historico.push({
+    historicoBase.push({
       data: new Date().toISOString(),
       status: "entregue",
       local: entrega.endereco,
       detalhes: "Entrega concluída com sucesso"
     });
   } else if (entrega.status === "cancelada") {
-    historico.push({
+    historicoBase.push({
       data: new Date().toISOString(),
       status: "cancelada",
       local: "Centro de Distribuição",
       detalhes: "Entrega cancelada"
     });
   }
-  
-  res.json(historico);
+
+  res.json(historicoBase);
 });
 
 // Inicia o servidor
