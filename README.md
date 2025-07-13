@@ -37,3 +37,36 @@ Tecnologias principais:
 - Node.js 18+
 - React 18+
 - Express 4.x
+
+```
+
+```
+
+## 🚀 Como Executar o Sistema
+
+Siga estas instruções para configurar e executar o Route Manager em seu ambiente local:
+
+### Pré-requisitos
+- [Node.js](https://nodejs.org/) (versão 18 ou superior)
+- [npm](https://www.npmjs.com/) (vem com o Node.js) ou [Yarn](https://yarnpkg.com/)
+- [Git](https://git-scm.com/) (para clonar o repositório)
+
+### 📥 1. Clone o Repositório
+```bash
+git clone https://github.com/gustavsonbarros/react-js-routemanager
+cd route-manager
+
+
+### 2. Instale as Dependências
+Backend (servidor API)
+bash
+
+cd backend
+npm install
+
+Frontend (aplicação React)
+bash
+
+cd ../frontend
+npm install
+```
