@@ -279,6 +279,58 @@ app.get('/entregas/:id/historico', (req, res) => {
   res.json(historicoBase);
 });
 
+// server.js (adicionar estas rotas)
+const usuarios = [
+  { id: 1, username: 'admin', password: 'admin123', role: 'admin' },
+  { id: 2, username: 'user', password: 'user123', role: 'user' }
+];
+
+// Rota de login
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  const usuario = usuarios.find(u => 
+    u.username === username && u.password === password
+  );
+  
+  if (usuario) {
+    res.json({
+      success: true,
+      token: 'fake-jwt-token', // Em produção, use um JWT real
+      user: {
+        id: usuario.id,
+        username: usuario.username,
+        role: usuario.role
+      }
+    });
+  } else {
+    res.status(401).json({
+      success: false,
+      message: 'Credenciais inválidas'
+    });
+  }
+});
+
+// Middleware para verificar autenticação
+const authenticate = (req, res, next) => {
+  const token = req.headers.authorization;
+  
+  // Em produção, você validaria um JWT real aqui
+  if (token === 'fake-jwt-token') {
+    next();
+  } else {
+    res.status(401).json({ message: 'Não autorizado' });
+  }
+};
+
+// Proteger suas rotas API existentes (exemplo)
+app.get('/clientes', authenticate, (req, res) => {
+  res.json(clientes);
+});
+
+
+
+
 // Inicia o servidor
 app.listen(3001, () => {
   console.log('Servidor rodando na porta 3001');

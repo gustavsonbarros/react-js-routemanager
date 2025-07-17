@@ -1,17 +1,27 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Navbar.css';
 
 export default function Navbar() {
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    // Remove os itens de autenticação do localStorage
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('user');
+    // Redireciona para a página de login
+    navigate('/login');
+  };
+
   return (
     <nav className="navbar">
       <div className="navbar-container">
-        <Link to="/" className="navbar-logo">
+        <Link to="/home" className="navbar-logo">
           Route Manager Pro
         </Link>
         
         <ul className="navbar-menu">
           <li className="navbar-item">
-            <Link to="/" className="navbar-link">
+            <Link to="/home" className="navbar-link">
               Home
             </Link>
           </li>
@@ -41,6 +51,10 @@ export default function Navbar() {
             </Link>
           </li>
         </ul>
+
+        <button onClick={handleLogout} className="logout-button">
+          Sair
+        </button>
       </div>
     </nav>
   );
