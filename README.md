@@ -1,60 +1,77 @@
+```
 # 🚀 Route Manager
 
-O **Route Manager** é um sistema completo para  gerenciamento de rotas de entrega, permitindo o controle de clientes,  encomendas, rotas e o rastreamento de entregas em tempo real.
+O **Route Manager** é um sistema completo para o **gerenciamento de rotas de entrega**, permitindo o controle eficiente de **clientes**, **encomendas**, **centros de distribuição**, **rotas** e o **rastreamento de entregas em tempo real**.
 
+---
 
-## 📋 ✨ Funcionalidades Principais
+## ✨ Funcionalidades Principais
+
 ### 🗺️ Gerenciamento de Rotas
 
-- Cadastro de rotas com origem e destino
-- Visualização de todas as rotas disponíveis
-- Edição e exclusão de rotas cadastradas
+- Cadastro de rotas com origem e destino  
+- Visualização de todas as rotas disponíveis  
+- Edição e exclusão de rotas cadastradas  
 
 ### 📦 Controle de Entregas
 
-- Agendamento de novas entregas
-- Vinculação a clientes e encomendas
-- Atualização de status (Em preparo, A caminho, Entregue)
-- 🔍 Rastreamento
+- Agendamento de novas entregas  
+- Associação com clientes e encomendas  
+- Atualização de status da entrega:  
+  - Em preparo  
+  - A caminho  
+  - Entregue  
 
-- Busca por código de rastreio
-- Visualização do histórico completo
-- Detalhes do cliente e endereço
+### 🔍 Rastreamento
+
+- Busca por código de rastreio  
+- Visualização do histórico completo da entrega  
+- Exibição de dados do cliente e endereço de entrega  
 
 ### 🏢 Centros de Distribuição
 
-- Cadastro de centros por região
-- Gestão de localidades
+- Cadastro de centros por região  
+- Gerenciamento de localidades  
 
-## ✨ Funcionalidades
-- 🗺️ Gerenciamento de rotas
-- 📦 Controle de entregas
-- 🔍 Rastreamento em tempo real
+---
 
-## 🛠️ Tecnologias
+## 🧰 Tecnologias Utilizadas
+
+- ⚙️ **Node.js** 18+  
+- ⚛️ **React** 18+  
+- 🚀 **Express** 4.x  
+
+---
+
+## 🖥️ Como Executar o Projeto Localmente
+
+### ✅ Pré-requisitos
+
+Certifique-se de ter as seguintes ferramentas instaladas:
+
+- [Node.js](https://nodejs.org/) (v18 ou superior)  
+- [npm](https://www.npmjs.com/) (gerenciador de pacotes do Node)  
+- [Git](https://git-scm.com/) (para clonar o repositório)  
+
+---
+
+### 📥 Passo a Passo
+
 ```bash
-Tecnologias principais:
-- Node.js 18+
-- React 18+
-- Express 4.x
-
-```
-
-```
-
-## 🚀 Como Executar o Sistema
-
-Siga estas instruções para configurar e executar o Route Manager em seu ambiente local:
-
-### Pré-requisitos
-- [Node.js](https://nodejs.org/) (versão 18 ou superior)
-- [npm](https://www.npmjs.com/) (vem com o Node.js) ou [Yarn](https://yarnpkg.com/)
-- [Git](https://git-scm.com/) (para clonar o repositório)
-
-### 📥 1. Clone o Repositório
-```bash
+# 1. Clone o repositório
 git clone https://github.com/gustavsonbarros/react-js-routemanager
+
+# 2. Acesse o diretório do projeto
 cd route-manager
 
+## Executando o Back-end (API)
+
+# No terminal da sua IDE ou VS Code:
+node server.js
+
+### Executando o Front-end (React)
+# Em um novo terminal, ainda dentro do diretório do projeto:
+npm install      # Instala todas as dependências
+npm run dev      # Inicia a aplicação React
 
 ```
