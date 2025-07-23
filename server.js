@@ -27,6 +27,21 @@ let rotaCurrentId = 1;
 let entregas = [];
 
 
+app.get('/', (req, res) => {
+  res.json({
+    message: "API de Gestão de Entregas",
+    endpoints: {
+      clientes: "/clientes",
+      encomendas: "/encomendas",
+      centros: "/centros",
+      rotas: "/rotas",
+      entregas: "/entregas",
+      rastreamento: "/rastreamento"
+    }
+  });
+});
+
+
 // Endpoints para clientes
 app.get('/clientes', (req, res) => {
   res.json(clientes);
@@ -67,6 +82,10 @@ app.delete('/clientes/:id', (req, res) => {
   
   clientes = clientes.filter(c => c.id !== id);
   res.status(204).send();
+});
+
+app.get('/rastreamento', (req, res) => {
+  res.json({ message: "Endpoint de rastreamento" }); 
 });
 
 // Endpoints para encomendas
